@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VTS Assistant HUD - Even Realities G2</title>
+    <style>
+        :root {
+            --bg-color: #030805;
+            --hud-green: #00ff66;
+            --hud-green-glow: rgba(0, 255, 102, 0.4);
+            --hud-dim: #004d1f;
+            --hud-warn: #ffcc00;
+            --hud-alert: #ff3333;
+            --font-family: 'Courier New', Courier, monospace, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--hud-green);
+            font-family: var(--font-family);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--hud-green);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px var(--hud-green-glow);
+        }
+
+        .api-key-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            background-color: #001a0a;
+            border: 1px solid var(--hud-green);
+            color: var(--hud-green);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-family: var(--font-family);
+            outline: none;
+        }
+
+        button {
+            background-color: var(--hud-green);
+            color: var(--bg-color);
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: var(--font-family);
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            box-shadow: 0 0 10px var(--hud-green);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .mic-btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mic-btn.active {
+            background-color: var(--hud-alert);
+            color: #fff;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(255, 51, 51, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0); }
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            border: 1px solid var(--hud-green);
+        }
+
+        /* Glass Simulator UI */
+        .glass-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            flex-grow: 1;
+        }
+
+        .lens {
+            border: 2px solid var(--hud-green);
+            border-radius: 12px;
+            padding: 20px;
+            background: radial-gradient(circle at center, rgba(0,40,15,0.3) 0%, rgba(3,8,5,0.9) 100%);
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.15) inset;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .lens.emergency {
+            border-color: var(--hud-alert);
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.3) inset;
+            animation: borderFlash 1s infinite alternate;
+        }
+
+        @keyframes borderFlash {
+            from { border-color: var(--hud-alert); }
+            to { border-color: #660000; }
+        }
+
+        .lens-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed var(--hud-green);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .lens.emergency .lens-header {
+            border-bottom-color: var(--hud-alert);
+            color: var(--hud-alert);
+        }
+
+        .rx-box {
+            background: rgba(0, 30, 12, 0.6);
+            border: 1px solid var(--hud-dim);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .rx-original {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .rx-translation {
+            font-size: 1.05rem;
+            color: #88ffbb;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-card {
+            background: rgba(0, 35, 15, 0.7);
+            border: 1px solid var(--hud-green);
+            border-radius: 8px;
+            padding: 12px 15px;
+            box-shadow: 0 0 5px var(--hud-green-glow);
+        }
+
+        .option-card.emergency-card {
+            border-color: var(--hud-alert);
+            background: rgba(40, 0, 0, 0.6);
+        }
+
+        .option-card.directive-card {
+            border-color: var(--hud-warn);
+            background: rgba(40, 30, 0, 0.6);
+        }
+
+        .opt-title {
+            font-size: 0.85rem;
+            color: var(--hud-warn);
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+
+        .opt-english {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .opt-korean {
+            font-size: 0.95rem;
+            color: #b3ffd6;
+            margin-bottom: 6px;
+        }
+
+        .opt-pronunciation {
+            font-size: 0.9rem;
+            color: #ff9999;
+            background: rgba(50, 0, 0, 0.5);
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            border: 1px solid rgba(255, 51, 51, 0.3);
+        }
+
+        .sop-checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .sop-step {
+            display: flex;
+            gap: 10px;
+            font-size: 0.95rem;
+            background: rgba(40, 0, 0, 0.4);
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid var(--hud-alert);
+        }
+
+        .instruction-guide {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #66cc99;
+            border-top: 1px solid var(--hud-dim);
+            padding-top: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .glass-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>VTS ASSISTANT HUD [G2 GLASSES]</h1>
+        <div class="api-key-container">
+            <input type="text" id="apiKeyInput" placeholder="Gemini API Key 입력">
+            <button onclick="saveApiKey()">키 저장</button>
+        </div>
+    </header>
+
+    <div class="controls">
+        <button id="micBtn" class="mic-btn" onclick="toggleListening()">
+            <span id="micIcon">🎙️</span> <span id="micText">VHF 음성 수신 시작</span>
+        </button>
+        <div id="statusBadge" class="status-badge">상태: 대기 중</div>
+    </div>
+
+    <!-- Smart Glasses HUD Area -->
+    <div class="glass-container">
+        
+        <!-- LEFT LENS (Rx - 수신 정보) -->
+        <div class="lens" id="leftLens">
+            <div class="lens-header">
+                <span>👁️ LEFT LENS [수신 통신]</span>
+                <span id="rxSignal">Signal: -- | IDLE</span>
+            </div>
+            
+            <div class="rx-box">
+                <div class="rx-original" id="rxOriginal">"VHF 수신 대기 중..."</div>
+                <div class="rx-translation" id="rxTranslation">[번역결과 표출 영역]</div>
+            </div>
+
+            <div class="instruction-guide">
+                💡 <b>음성 명령 가이드:</b><br>
+                • <b>"관제 ~"</b> : 추천응답 공백 시 맞춤형 영문 SMCP 및 발음 생성<br>
+                • <b>"일반 ~"</b> : 해사법령 자동 / 상황 맞춤 검색<br>
+                • <b>"비상 ~"</b> : 6대 사고 SOP 팝업 및 상대선 강제지시/권고 모드
+            </div>
+        </div>
+
+        <!-- RIGHT LENS (Tx & SOP - 발화 가이드, SOP & 법령) -->
+        <div class="lens" id="rightLens">
+            <div class="lens-header">
+                <span id="rightLensTitle">👁️ RIGHT LENS [발화 가이드 & 비상 지시]</span>
+                <span>Gemini 2.0 Flash</span>
+            </div>
+
+            <div id="rightContent" class="options-list">
+                <div class="option-card">
+                    <div class="opt-title">시스템 안내</div>
+                    <div class="opt-english">System Ready. Awaiting Communications.</div>
+                    <div class="opt-korean">[시스템 준비 완료. VHF 통신 대기 중.]</div>
+                    <div class="opt-pronunciation">[발음] 시스템 레디. 어웨이팅 커뮤니케이션스.</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('GEMINI_API_KEY');
+            if (savedKey) {
+                document.getElementById('apiKeyInput').value = savedKey;
+            }
+
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = (event) => {
+                    const lastResultIndex = event.results.length - 1;
+                    const transcript = event.results[lastResultIndex][0].transcript.trim();
+                    processAudioInput(transcript);
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Speech Recognition Error:", event.error);
+                    updateStatus("음성 인식 오류: " + event.error);
+                };
+
+                recognition.onend = () => {
+                    if (isListening) recognition.start();
+                };
+            } else {
+                alert("이 브라우저는 웹 음성 인식을 지원하지 않습니다.");
+            }
+        });
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem('GEMINI_API_KEY', key);
+                alert("API Key가 성공적으로 저장되었습니다.");
+            }
+        }
+
+        function toggleListening() {
+            if (!recognition) return;
+
+            const micBtn = document.getElementById('micBtn');
+            const micText = document.getElementById('micText');
+
+            if (!isListening) {
+                recognition.start();
+                isListening = true;
+                micBtn.classList.add('active');
+                micText.innerText = "음성 수신 중...";
+                updateStatus("마이크 활성화됨 (VHF / 관제사 음성 감지 중)");
+            } else {
+                recognition.stop();
+                isListening = false;
+                micBtn.classList.remove('active');
+                micText.innerText = "VHF 음성 수신 시작";
+                updateStatus("마이크 정지됨");
+            }
+        }
+
+        function updateStatus(text) {
+            document.getElementById('statusBadge').innerText = "상태: " + text;
+        }
+
+        async function processAudioInput(userSpeech) {
+            const apiKey = localStorage.getItem('GEMINI_API_KEY');
+            if (!apiKey) {
+                alert("Gemini API Key를 상단에 입력 후 저장해주세요.");
+                return;
+            }
+
+            document.getElementById('rxOriginal').innerText = `"${userSpeech}"`;
+            document.getElementById('rxSignal').innerText = "Signal: 98% | PROCESSING";
+            updateStatus("Gemini AI 실시간 관제 분석 중...");
+
+            const systemInstruction = `
+You are a Maritime VTS AI Assistant for Even Realities G2 Smart Glasses.
+Analyze spoken English/Korean inputs and output JSON matching the 8 core features.
+
+[Core Feature Processing Rules]
+1. Return ONLY valid JSON matching the schema below.
+2. Signal Noise/Poor Rx (수신 불량): If input is distorted or noisy, reconstruct context using SMCP and suggest "Say again" on Right Lens.
+3. Controller Directives ("관제 ~"): If controller speaks in Korean starting with "관제", convert intent to professional English SMCP directives + Korean translation + Korean Phonetic Guide ([발음] ...).
+4. Law Search ("일반 ~"): If speech queries maritime law or traffic rules (e.g., priority, overtaking), extract applicable articles and SMCP recommendations.
+5. Korean Vessel Detection (국적선 감지): If Korean ship name/callsign or domestic emergency detected, switch Right Lens to Korean action checklist and Korean directives.
+6. Emergency SOP (충돌, 좌초, 화재·폭발, 침수, 전복, 침몰): Provide 5-step VTS action checklist AND mandatory directives (강제지시) & recommendations (권고사항) to target vessel.
+7. ALL English options MUST include a phonetic guide in Korean ([발음] ...).
+
+[JSON Schema]
+{
+  "mode": "NORMAL" | "EMERGENCY" | "KOREAN_SHIP" | "LAW_QUERY",
+  "left_lens": {
+    "original_text": "Spoken text",
+    "korean_translation": "Korean translation",
+    "signal_status": "Signal: 95% | CLEAR"
+  },
+  "right_lens": {
+    "title": "Display Title for Right Lens",
+    "directives": [
+      {
+        "type": "MANDATORY_DIRECTIVE" | "RECOMMENDATION" | "SMCP_RESPONSE" | "LAW_ARTICLE",
+        "label": "강제지시" | "권고사항" | "표준응답" | "관련법령",
+        "english": "English sentence or Law title",
+        "korean": "Korean explanation",
+        "pronunciation": "[발음] 한글 영어 발음 가이드"
+      }
+    ],
+    "sop_steps": [
+      "1단계: 현장 감지 및 Fact-Finding",
+      "2단계: 사고선 정지/변침 강제지시"
+    ]
+  }
+}
+            `;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userSpeech }] }],
+                        systemInstruction: { parts: [{ text: systemInstruction }] },
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            temperature: 0.1
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                const resultText = data.candidates[0].content.parts[0].text;
+                const parsed = JSON.parse(resultText);
+
+                renderHUD(parsed);
+                updateStatus("분석 및 HUD 표출 완료");
+
+            } catch (err) {
+                console.error("API Error:", err);
+                updateStatus("AI 분석 오류 발생");
+            }
+        }
+
+        function renderHUD(data) {
+            const leftLens = document.getElementById('leftLens');
+            const rightLens = document.getElementById('rightLens');
+            const rightContent = document.getElementById('rightContent');
+
+            document.getElementById('rxOriginal').innerText = `"${data.left_lens.original_text}"`;
+            document.getElementById('rxTranslation').innerText = `[번역] ${data.left_lens.korean_translation}`;
+            document.getElementById('rxSignal').innerText = data.left_lens.signal_status;
+
+            if (data.mode === 'EMERGENCY') {
+                leftLens.classList.add('emergency');
+                rightLens.classList.add('emergency');
+            } else {
+                leftLens.classList.remove('emergency');
+                rightLens.classList.remove('emergency');
+            }
+
+            document.getElementById('rightLensTitle').innerText = `👁️ RIGHT LENS [${data.right_lens.title}]`;
+            rightContent.innerHTML = '';
+
+            if (data.right_lens.sop_steps && data.right_lens.sop_steps.length > 0) {
+                const sopBox = document.createElement('div');
+                sopBox.className = 'sop-checklist';
+                sopBox.innerHTML = '<div style="color: var(--hud-alert); font-weight: bold; margin-bottom: 6px;">🚨 5단계 관제 비상 대응 SOP</div>';
+                
+                data.right_lens.sop_steps.forEach(step => {
+                    const stepEl = document.createElement('div');
+                    stepEl.className = 'sop-step';
+                    stepEl.innerText = step;
+                    sopBox.appendChild(stepEl);
+                });
+                rightContent.appendChild(sopBox);
+            }
+
+            if (data.right_lens.directives && data.right_lens.directives.length > 0) {
+                data.right_lens.directives.forEach((item, idx) => {
+                    const card = document.createElement('div');
+                    let cardClass = 'option-card';
+                    if (item.type === 'MANDATORY_DIRECTIVE') cardClass += ' emergency-card';
+                    if (item.type === 'RECOMMENDATION') cardClass += ' directive-card';
+                    card.className = cardClass;
+
+                    card.innerHTML = `
+                        <div class="opt-title">[${item.label || '지시사항'}]</div>
+                        <div class="opt-english">${idx + 1}. "${item.english}"</div>
+                        <div class="opt-korean">${item.korean}</div>
+                        <div class="opt-pronunciation">${item.pronunciation || '[발음 정보 없음]'}</div>
+                    `;
+                    rightContent.appendChild(card);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
